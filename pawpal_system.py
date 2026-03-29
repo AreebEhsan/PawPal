@@ -1,5 +1,5 @@
 """
-PawPal+ backend system — Phase 1 class skeletons.
+PawPal+ backend system — Phase 2 implementation.
 
 This module defines the four core classes for PawPal+:
 
@@ -7,9 +7,6 @@ This module defines the four core classes for PawPal+:
     Pet       — a pet and its associated tasks
     Owner     — a pet owner managing one or more pets
     Scheduler — coordinates daily schedule generation
-
-Phase 1: class skeletons with type hints and docstrings only.
-         Method bodies are stubs (pass) to be filled in Phase 2.
 """
 
 from __future__ import annotations
@@ -38,7 +35,7 @@ class Task:
 
     def mark_complete(self) -> None:
         """Mark this task as done."""
-        pass
+        self.completed = True
 
 
 # ---------------------------------------------------------------------------
@@ -72,11 +69,11 @@ class Pet:
         Args:
             task: A Task instance to associate with this pet.
         """
-        pass
+        self.tasks.append(task)
 
     def get_tasks(self) -> List[Task]:
         """Return all tasks registered for this pet."""
-        pass
+        return self.tasks
 
 
 # ---------------------------------------------------------------------------
@@ -108,7 +105,7 @@ class Owner:
         Args:
             pet: A Pet instance to add.
         """
-        pass
+        self.pets.append(pet)
 
     def get_all_tasks(self) -> List[Task]:
         """
@@ -117,7 +114,10 @@ class Owner:
         This is the single access point used by Scheduler,
         so task data is never duplicated outside of Pet.
         """
-        pass
+        all_tasks = []
+        for pet in self.pets:
+            all_tasks.extend(pet.get_tasks())
+        return all_tasks
 
 
 # ---------------------------------------------------------------------------
@@ -145,12 +145,15 @@ class Scheduler:
         """
         Select and order tasks to build a daily care plan.
 
-        Phase 2 will implement the actual logic. Expected behavior:
-        - Retrieve all tasks via owner.get_all_tasks()
-        - Sort or filter by priority and duration
-        - Return an ordered list representing today's plan
+        Steps:
+        1. Retrieve all tasks from every pet via owner.get_all_tasks().
+        2. Drop any tasks already marked complete.
+        3. Sort by priority (high first), then by duration (shorter first)
+           so that urgent tasks always appear at the top.
 
         Returns:
-            A list of Task objects representing the daily schedule.
+            A list of pending Task objects in priority order.
         """
-        pass
+        priority_order = {"high": 0, "medium": 1, "low": 2}
+        pending = [t for t in self.owner.get_all_tasks() if not t.completed]
+        return sorted(pending, key=lambda t: (priority_order.get(t.priority, 3), t.duration_minutes))
