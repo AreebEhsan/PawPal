@@ -2,15 +2,75 @@
 
 ## 1. System Design
 
+### Core user actions
+
+Three actions a user should be able to perform with PawPal+:
+
+1. **Register an owner and add pets** — The system needs to know who the owner is and which pet(s) they care for before anything else can happen. This is the entry point to the whole system.
+
+2. **Add pet care tasks** — The owner should be able to create tasks (e.g., "Morning walk", "Feeding", "Medication") and attach them to a pet, specifying the title, duration, and priority. This is the core data-entry action.
+
+3. **Generate a daily care schedule** — Given all the tasks entered, the system should produce an ordered daily plan that selects and prioritizes tasks based on their priority and duration.
+
+---
+
 **a. Initial design**
 
-- Briefly describe your initial UML design.
-- What classes did you include, and what responsibilities did you assign to each?
+The design includes four classes: `Task`, `Pet`, `Owner`, and `Scheduler`.
+
+**Task** (dataclass) is the smallest unit of work. It stores `title`, `duration_minutes`, `priority` ("low" / "medium" / "high"), and `completed`. It has one method, `mark_complete()`. Using a dataclass is appropriate because tasks are simple data records with no complex behavior at this stage.
+
+**Pet** holds a pet's basic identity (`name`, `species`) and owns its own list of tasks. Methods: `add_task()` to attach a task, and `get_tasks()` to retrieve them. Keeping tasks on Pet (rather than a flat list on Owner) means task ownership stays clear even when there are multiple pets.
+
+**Owner** is the top-level object. It stores the owner's `name` and a list of `pets`. Methods: `add_pet()` to register a pet, and `get_all_tasks()` to aggregate tasks across all pets. This aggregation method is the single access point for Scheduler, so task data is never stored in more than one place.
+
+**Scheduler** holds a reference to an `Owner` and has one method: `generate_schedule()`, which will select and order tasks to build a daily plan. Scheduler does not store tasks — it reads them through Owner.
+
+Relationships:
+- Owner **owns** one or more Pets (composition).
+- Pet **has** zero or more Tasks (composition).
+- Scheduler **depends on** Owner to access tasks (association).
+
+UML class diagram (Mermaid.js):
+
+```mermaid
+classDiagram
+    class Task {
+        +str title
+        +int duration_minutes
+        +str priority
+        +bool completed
+        +mark_complete() None
+    }
+
+    class Pet {
+        +str name
+        +str species
+        +list~Task~ tasks
+        +add_task(task: Task) None
+        +get_tasks() list~Task~
+    }
+
+    class Owner {
+        +str name
+        +list~Pet~ pets
+        +add_pet(pet: Pet) None
+        +get_all_tasks() list~Task~
+    }
+
+    class Scheduler {
+        +Owner owner
+        +generate_schedule() list~Task~
+    }
+
+    Owner "1" *-- "1..*" Pet : owns
+    Pet "1" *-- "0..*" Task : has
+    Scheduler "1" --> "1" Owner : depends on
+```
 
 **b. Design changes**
 
-- Did your design change during implementation?
-- If yes, describe at least one change and why you made it.
+The first draft of the design included several attributes and methods that turned out to be premature for Phase 1: `category`, `recurrence`, and `age_years` as attributes, and `reset()`, `priority_value()`, `explain_schedule()`, `get_pending_tasks()`, `remove_task()`, and `remove_pet()` as methods. After review, all of these were removed. They either anticipate Phase 2 logic (filtering, recurrence, explanation) or add complexity that cannot be justified yet. Keeping only the essentials makes each class easier to explain and easier to build on in the next phase.
 
 ---
 
