@@ -152,3 +152,10 @@ I would also improve the `"weekly"` recurrence support. The field exists and is 
 The most important thing I learned is that **designing for the current phase, not the final phase, produces cleaner code**. Every time I was tempted to add something "for later," it added complexity without adding value. The features I added early that turned out to be wrong (like `category` and `age_years` in the first draft) had to be removed, which cost time. The features I deferred until they were actually needed (like `recurrence` and `time_slot`) slotted in cleanly with minimal disruption.
 
 Working with AI reinforced this lesson: AI tends to suggest complete, sophisticated solutions. Knowing when to accept only the minimal relevant part of a suggestion — and how to ask for it — is a skill that made the whole project go faster and stay simpler.
+
+---
+
+## 6. Screenshot
+
+![PawPal screenshot](scrsht.png)
+

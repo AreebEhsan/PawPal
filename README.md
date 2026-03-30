@@ -117,9 +117,7 @@ python -m pytest -v       # verbose output
 
 Add a screenshot here after running `streamlit run app.py`.
 
-```
-[ screenshot placeholder ]
-```
+![PawPal screenshot](scrsht.png)
 
 ---
 
