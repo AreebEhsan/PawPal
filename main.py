@@ -1,52 +1,87 @@
 """
-PawPal+ CLI demo — Phase 2.
+PawPal+ CLI demo — Phase 4.
 
 Run with:  python main.py
 
-This script creates a sample owner, two pets, and several tasks, then
-uses the Scheduler to produce and print a daily care plan.
+Demonstrates:
+  - Sorting by priority and duration
+  - Filtering the schedule by pet name
+  - Recurrence: resetting daily tasks at the start of a new day
+  - Conflict detection: warning when two tasks share a time slot
 """
 
 from pawpal_system import Owner, Pet, Task, Scheduler
 
 
+def print_schedule(label: str, schedule: list) -> None:
+    print(f"\n{label}")
+    print("-" * 44)
+    if not schedule:
+        print("  (no pending tasks)")
+    else:
+        for i, task in enumerate(schedule, start=1):
+            slot = f" @ {task.time_slot}" if task.time_slot else ""
+            recur = f" [{task.recurrence}]" if task.recurrence != "once" else ""
+            print(f"  {i}. [{task.priority.upper():6}] {task.title:<22} {task.duration_minutes} min{slot}{recur}")
+    print("-" * 44)
+
+
 def main() -> None:
-    # --- Set up owner ---
+    # --- Setup ---
     owner = Owner("Jordan")
 
-    # --- Create pets ---
     mochi = Pet("Mochi", "dog")
-    luna = Pet("Luna", "cat")
+    luna  = Pet("Luna",  "cat")
 
-    # --- Add tasks to Mochi ---
-    mochi.add_task(Task("Morning walk",  30, "high"))
-    mochi.add_task(Task("Feeding",       10, "high"))
-    mochi.add_task(Task("Playtime",      20, "medium"))
+    # Mochi's tasks — note two tasks share time slot "08:00" (conflict)
+    mochi.add_task(Task("Morning walk",  30, "high",   time_slot="08:00", recurrence="daily"))
+    mochi.add_task(Task("Feeding",       10, "high",   time_slot="08:00", recurrence="daily"))
+    mochi.add_task(Task("Playtime",      20, "medium", time_slot="17:00"))
 
-    # --- Add tasks to Luna ---
-    luna.add_task(Task("Feeding",        10, "high"))
+    # Luna's tasks
+    luna.add_task(Task("Feeding",        10, "high",   time_slot="09:00", recurrence="daily"))
     luna.add_task(Task("Grooming",       15, "low"))
 
-    # --- Register pets with owner ---
     owner.add_pet(mochi)
     owner.add_pet(luna)
 
-    # --- Generate schedule ---
     scheduler = Scheduler(owner)
-    schedule = scheduler.generate_schedule()
 
-    # --- Print schedule ---
-    print(f"\nPawPal+ — Daily Schedule for {owner.name}")
-    print("=" * 42)
+    # --- 1. Full sorted schedule ---
+    print_schedule(f"Full schedule for {owner.name}", scheduler.generate_schedule())
 
-    if not schedule:
-        print("  No tasks scheduled for today.")
+    # --- 2. Filtered: Mochi only ---
+    print_schedule("Filtered: Mochi's tasks only", scheduler.filter_schedule("Mochi"))
+
+    # --- 3. Filtered: Luna only ---
+    print_schedule("Filtered: Luna's tasks only", scheduler.filter_schedule("Luna"))
+
+    # --- 4. Conflict detection ---
+    print("\nConflict check")
+    print("-" * 44)
+    conflicts = scheduler.detect_conflicts()
+    if conflicts:
+        for warning in conflicts:
+            print(f"  WARNING: {warning}")
     else:
-        for i, task in enumerate(schedule, start=1):
-            print(f"  {i}. [{task.priority.upper():6}] {task.title:<20} {task.duration_minutes} min")
+        print("  No conflicts detected.")
+    print("-" * 44)
 
-    print("=" * 42)
-    print(f"  Total: {len(schedule)} task(s)\n")
+    # --- 5. Recurrence: mark daily tasks complete, then reset ---
+    print("\nRecurrence demo")
+    print("-" * 44)
+    # Mark Mochi's daily tasks complete (simulating end-of-day)
+    for task in mochi.get_tasks():
+        if task.recurrence == "daily":
+            task.mark_complete()
+    print("  Marked Mochi's daily tasks as complete.")
+    print(f"  Pending tasks before reset: {len(scheduler.generate_schedule())}")
+
+    # Reset daily tasks (simulating next morning)
+    scheduler.reset_daily_tasks()
+    print("  Called reset_daily_tasks() — new day begins.")
+    print(f"  Pending tasks after reset:  {len(scheduler.generate_schedule())}")
+    print("-" * 44)
 
 
 if __name__ == "__main__":

@@ -1,12 +1,13 @@
 """
-PawPal+ backend system — Phase 2 implementation.
+PawPal+ backend system — Phase 4 implementation.
 
 This module defines the four core classes for PawPal+:
 
     Task      — a single pet care task (dataclass)
     Pet       — a pet and its associated tasks
     Owner     — a pet owner managing one or more pets
-    Scheduler — coordinates daily schedule generation
+    Scheduler — coordinates daily schedule generation, filtering,
+                recurrence reset, and conflict detection
 """
 
 from __future__ import annotations
@@ -30,8 +31,10 @@ class Task:
 
     title: str
     duration_minutes: int
-    priority: str           # "low" | "medium" | "high"
+    priority: str               # "low" | "medium" | "high"
     completed: bool = False
+    recurrence: str = "once"    # "once" | "daily" | "weekly"
+    time_slot: str = ""         # optional, e.g. "08:00" — used for conflict detection
 
     def mark_complete(self) -> None:
         """Mark this task as done."""
@@ -157,3 +160,55 @@ class Scheduler:
         priority_order = {"high": 0, "medium": 1, "low": 2}
         pending = [t for t in self.owner.get_all_tasks() if not t.completed]
         return sorted(pending, key=lambda t: (priority_order.get(t.priority, 3), t.duration_minutes))
+
+    def filter_schedule(self, pet_name: str) -> List[Task]:
+        """
+        Return the pending tasks for a single named pet, sorted by priority.
+
+        Args:
+            pet_name: The name of the pet whose tasks should be returned.
+
+        Returns:
+            A sorted list of pending Task objects for that pet,
+            or an empty list if the pet is not found.
+        """
+        priority_order = {"high": 0, "medium": 1, "low": 2}
+        for pet in self.owner.pets:
+            if pet.name.lower() == pet_name.lower():
+                pending = [t for t in pet.get_tasks() if not t.completed]
+                return sorted(pending, key=lambda t: (priority_order.get(t.priority, 3), t.duration_minutes))
+        return []
+
+    def detect_conflicts(self) -> List[str]:
+        """
+        Find tasks that share the same non-empty time_slot.
+
+        Two pending tasks scheduled at the same time slot are a conflict.
+        Returns human-readable warning strings rather than raising errors.
+
+        Returns:
+            A list of warning strings, one per conflict pair found.
+            An empty list means no conflicts were detected.
+        """
+        warnings: List[str] = []
+        seen: dict = {}  # time_slot -> title of first task seen there
+        for task in self.owner.get_all_tasks():
+            if task.time_slot and not task.completed:
+                if task.time_slot in seen:
+                    warnings.append(
+                        f"Conflict at {task.time_slot}: '{seen[task.time_slot]}' and '{task.title}'"
+                    )
+                else:
+                    seen[task.time_slot] = task.title
+        return warnings
+
+    def reset_daily_tasks(self) -> None:
+        """
+        Reset the completed flag on all daily recurring tasks.
+
+        Call this at the start of a new day. Tasks with recurrence="once"
+        or recurrence="weekly" are not affected.
+        """
+        for task in self.owner.get_all_tasks():
+            if task.completed and task.recurrence == "daily":
+                task.completed = False

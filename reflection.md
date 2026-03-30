@@ -78,13 +78,15 @@ The first draft of the design included several attributes and methods that turne
 
 **a. Constraints and priorities**
 
-- What constraints does your scheduler consider (for example: time, priority, preferences)?
-- How did you decide which constraints mattered most?
+The scheduler currently considers two constraints: **priority** and **duration**. Tasks marked "high" always appear before "medium" and "low" tasks. When two tasks share the same priority level, the shorter one is scheduled first. This "shortest job first within a priority tier" approach keeps the plan actionable — a busy owner can knock out several short high-priority tasks before tackling a longer one.
+
+The priority ordering was chosen first because it directly reflects the owner's stated importance values. Duration was chosen as the secondary sort because it requires no extra input from the user (the field already exists) and produces a more realistic-feeling plan than arbitrary insertion order.
 
 **b. Tradeoffs**
 
-- Describe one tradeoff your scheduler makes.
-- Why is that tradeoff reasonable for this scenario?
+The main tradeoff is that the scheduler is **greedy and time-unaware**: it ranks and returns all pending tasks without checking whether the owner actually has enough time to complete them all. This means the plan can be longer than the owner's available time on a busy day.
+
+This tradeoff is reasonable for Phase 4 because the assignment does not yet require the owner to declare a daily time budget. Adding a hard time cutoff would require either an `available_minutes` field on `Owner` or UI input for it — both are natural Phase 5 additions. For now, showing all pending tasks in priority order gives the owner a clear view of what matters most, and they can stop when they run out of time.
 
 ---
 

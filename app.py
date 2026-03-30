@@ -118,7 +118,8 @@ if st.button("Generate schedule"):
     if not owner.pets:
         st.warning("Add at least one pet and task first.")
     else:
-        schedule = Scheduler(owner).generate_schedule()
+        scheduler = Scheduler(owner)
+        schedule = scheduler.generate_schedule()
         if not schedule:
             st.info("No pending tasks to schedule. All tasks may already be completed.")
         else:
@@ -129,7 +130,14 @@ if st.button("Generate schedule"):
                         "Priority": t.priority.upper(),
                         "Task": t.title,
                         "Duration (min)": t.duration_minutes,
+                        "Recurs": t.recurrence,
+                        "Time slot": t.time_slot if t.time_slot else "—",
                     }
                     for t in schedule
                 ]
             )
+
+        # Conflict warnings
+        conflicts = scheduler.detect_conflicts()
+        for warning in conflicts:
+            st.warning(f"Scheduling conflict: {warning}")
