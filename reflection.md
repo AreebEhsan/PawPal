@@ -40,6 +40,8 @@ classDiagram
         +int duration_minutes
         +str priority
         +bool completed
+        +str recurrence
+        +str time_slot
         +mark_complete() None
     }
 
@@ -61,6 +63,9 @@ classDiagram
     class Scheduler {
         +Owner owner
         +generate_schedule() list~Task~
+        +filter_schedule(pet_name: str) list~Task~
+        +detect_conflicts() list~str~
+        +reset_daily_tasks() None
     }
 
     Owner "1" *-- "1..*" Pet : owns
@@ -94,13 +99,15 @@ This tradeoff is reasonable for Phase 4 because the assignment does not yet requ
 
 **a. How you used AI**
 
-- How did you use AI tools during this project (for example: design brainstorming, debugging, refactoring)?
-- What kinds of prompts or questions were most helpful?
+I used AI tools at every phase of this project, but in different ways at different stages. During system design (Phase 1), AI was most useful for brainstorming which classes to include and what responsibilities each one should carry. I described the scenario and asked "what classes would a pet care scheduling system need?" — that kind of open-ended design question produced the clearest, most useful output. During implementation (Phase 2 and 4), I used AI to draft method bodies and then verified each one against my own understanding of what the method should do. During testing, I used AI to suggest test cases I might not have considered, like checking that completed tasks are excluded from conflict detection.
+
+The most useful prompts were specific and constrained: "implement only what Phase 2 needs, no more" rather than "implement the full system." Narrowing the scope in the prompt consistently produced simpler, more readable output.
 
 **b. Judgment and verification**
 
-- Describe one moment where you did not accept an AI suggestion as-is.
-- How did you evaluate or verify what the AI suggested?
+The first AI draft of the system design included several attributes and methods that were technically reasonable but premature: `category`, `recurrence`, `age_years`, `priority_value()`, `reset()`, `explain_schedule()`, and several removal methods. I rejected all of these for Phase 1 because none of them could be justified by the Phase 1 assignment requirements. I evaluated the suggestion by asking: "can I explain why this exists in a one-sentence justification to a grader?" If the answer was no, I removed it.
+
+Later, when AI suggested adding `available_minutes` to `Owner` for time-budget scheduling, I deferred it rather than adding it immediately — there was no UI mechanism to collect it yet, and adding a field with no connected behavior would have been dead code. Verifying AI suggestions by checking whether they connect to something real in the current phase turned out to be a reliable filter.
 
 ---
 
@@ -108,13 +115,21 @@ This tradeoff is reasonable for Phase 4 because the assignment does not yet requ
 
 **a. What you tested**
 
-- What behaviors did you test?
-- Why were these tests important?
+The test suite covers 13 behaviors across all four classes:
+
+- **Task**: `mark_complete()` correctly sets `completed` to `True`
+- **Pet**: `add_task()` increases the task list count by one
+- **Owner**: `get_all_tasks()` aggregates correctly across multiple pets
+- **Scheduler — generate_schedule**: completed tasks are excluded; output is sorted high → medium → low
+- **Scheduler — filter_schedule**: returns only the named pet's tasks; returns empty for unknown names; excludes completed tasks
+- **Scheduler — reset_daily_tasks**: daily tasks are reset after completion; once-tasks are unaffected
+- **Scheduler — detect_conflicts**: same-slot tasks trigger a warning; different slots do not; completed tasks are not checked
+
+These tests matter because they verify the core guarantee of the system: the schedule is always the right tasks in the right order. If `generate_schedule()` silently included completed tasks or sorted incorrectly, the app would show wrong data with no visible error.
 
 **b. Confidence**
 
-- How confident are you that your scheduler works correctly?
-- What edge cases would you test next if you had more time?
+**4 / 5.** All implemented behaviors are covered and all 13 tests pass. The areas I am least confident about are edge cases not yet tested: an owner with zero pets, a pet with zero tasks, two tasks with identical titles, and the behavior of `"weekly"` recurrence (the field exists but reset logic only handles `"daily"`). These would be the next tests to write.
 
 ---
 
@@ -122,12 +137,18 @@ This tradeoff is reasonable for Phase 4 because the assignment does not yet requ
 
 **a. What went well**
 
-- What part of this project are you most satisfied with?
+The class hierarchy — Owner → Pet → Task — was the right design from the start and never needed restructuring. Keeping tasks inside Pet rather than on a flat Owner list meant that filtering by pet (`filter_schedule`) was trivial to add in Phase 4 without touching any other class. Good data ownership decisions at the beginning made later additions easy.
+
+The incremental, phase-by-phase approach also worked well. Each phase had a clear scope, which made it possible to verify the backend before wiring the UI, and to verify the UI before adding the algorithmic layer.
 
 **b. What you would improve**
 
-- If you had another iteration, what would you improve or redesign?
+The biggest gap in the current system is the lack of a time budget. The scheduler generates a complete list of pending tasks but has no way to stop when the owner runs out of time. Adding an `available_minutes` field to `Owner` and a cutoff loop in `generate_schedule()` would make the schedule much more realistic for a truly busy owner.
+
+I would also improve the `"weekly"` recurrence support. The field exists and is stored correctly, but `reset_daily_tasks()` ignores weekly tasks entirely. A proper weekly reset would need a day-of-week check, which requires a date — a small but meaningful addition.
 
 **c. Key takeaway**
 
-- What is one important thing you learned about designing systems or working with AI on this project?
+The most important thing I learned is that **designing for the current phase, not the final phase, produces cleaner code**. Every time I was tempted to add something "for later," it added complexity without adding value. The features I added early that turned out to be wrong (like `category` and `age_years` in the first draft) had to be removed, which cost time. The features I deferred until they were actually needed (like `recurrence` and `time_slot`) slotted in cleanly with minimal disruption.
+
+Working with AI reinforced this lesson: AI tends to suggest complete, sophisticated solutions. Knowing when to accept only the minimal relevant part of a suggestion — and how to ask for it — is a skill that made the whole project go faster and stay simpler.

@@ -69,13 +69,21 @@ else:
     with col3:
         priority = st.selectbox("Priority", ["high", "medium", "low"], key="task_priority")
 
+    col4, col5 = st.columns(2)
+    with col4:
+        recurrence = st.selectbox("Recurrence", ["once", "daily", "weekly"], key="task_recurrence")
+    with col5:
+        time_slot = st.text_input("Time slot (optional)", placeholder="e.g. 08:00", key="task_time_slot")
+
     if st.button("Add task"):
         title = task_title.strip()
         if not title:
             st.warning("Please enter a task title.")
         else:
             target_pet = next(p for p in owner.pets if p.name == selected_pet_name)
-            target_pet.add_task(Task(title, int(duration), priority))
+            target_pet.add_task(Task(title, int(duration), priority,
+                                     recurrence=recurrence,
+                                     time_slot=time_slot.strip()))
             st.success(f"Added '{title}' to {selected_pet_name}.")
 
 st.divider()
@@ -139,5 +147,24 @@ if st.button("Generate schedule"):
 
         # Conflict warnings
         conflicts = scheduler.detect_conflicts()
-        for warning in conflicts:
-            st.warning(f"Scheduling conflict: {warning}")
+        if conflicts:
+            st.markdown("**Scheduling conflicts detected:**")
+            for warning in conflicts:
+                st.warning(f"⚠️ {warning}")
+        else:
+            st.info("No scheduling conflicts detected.")
+
+st.divider()
+
+# ---------------------------------------------------------------------------
+# Section 6 — Daily reset
+# ---------------------------------------------------------------------------
+st.subheader("New Day")
+st.caption("Resets all daily recurring tasks so they appear in tomorrow's schedule.")
+
+if st.button("Reset daily tasks"):
+    if not owner.pets:
+        st.warning("No pets registered yet.")
+    else:
+        Scheduler(owner).reset_daily_tasks()
+        st.success("Daily tasks have been reset for a new day.")
